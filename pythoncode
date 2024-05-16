@@ -11,21 +11,16 @@ from sklearn.model_selection import KFold
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score, recall_score, f1_score
-
 df_1 = pd.read_csv('data_1.csv')
 df_1
-
 df = pd.read_csv('data.csv')
 df
-
 df2 = pd.read_csv('labels_1.csv')
 df2
-
 df3 = pd.merge(df, df2)
 df3
 df3.shape
 df3 = df3.drop(df3.columns[0], axis=1)
-
 df3
 column_name = 'Class'
 
@@ -38,7 +33,6 @@ plt.xlabel(column_name)
 plt.ylabel('Count')
 plt.xticks(rotation=0)
 plt.show()
-
 # Missing Value Assessment
 
 # Group the DataFrame by the "class" column
@@ -56,7 +50,6 @@ total_missing_values = df.isna().sum().sum()
 
 # Now 'total_missing_values' contains the total number of missing values in the DataFrame
 print("Total number of missing values:", total_missing_values)
-
 x = df3["Class"]
 x
 # Drop the class column for clustering
@@ -83,7 +76,6 @@ plt.title('KMeans Clustering')
 plt.colorbar(label='Cluster')
 plt.legend(labels=x)
 plt.show()
-
 def train_model(model):
     # Split data into features and target
     X = df3.drop(columns=['Class'])
@@ -132,10 +124,304 @@ def train_model(model):
     print("Average Precision:", avg_precision)
     print("Average Recall:", avg_recall)
     print("Average F1 Score:", avg_f1)
-
 # Train a decision tree model
 model = DecisionTreeClassifier()
 train_model(model)
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix
+from sklearn.decomposition import PCA
+
+# Load data
+df = pd.read_csv('data.csv')
+df2 = pd.read_csv('labels_1.csv')
+df3 = pd.merge(df, df2)
+df3 = df3.drop(df3.columns[0], axis=1)
+target_classes = ['BRCA', 'COAD', 'KIRC', 'LUAD', 'PRAD']
+
+# Data preprocessing
+X = df3.drop(columns=['Class'])
+y = df3['Class']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Train SVM model
+svm_model = SVC(kernel='linear', C=1.0, random_state=42)
+svm_model.fit(X_train_scaled, y_train)
+
+# Predictions
+y_pred = svm_model.predict(X_test_scaled)
+
+# Evaluation metrics
+accuracy = accuracy_score(y_test, y_pred)
+balanced_accuracy = balanced_accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, average='weighted', labels=np.unique(y_pred))
+recall = recall_score(y_test, y_pred, average='weighted', labels=np.unique(y_pred))
+f1 = f1_score(y_test, y_pred, average='weighted', labels=np.unique(y_pred))
+# Plot confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred, labels=target_classes)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=target_classes, yticklabels=target_classes)
+plt.title('Confusion Matrix for SVM Model')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+# Apply PCA for dimensionality reduction
+pca = PCA(n_components=2)
+X_train_pca = pca.fit_transform(X_train_scaled)
+
+# Plot PCA components
+plt.figure(figsize=(10, 8))
+sns.scatterplot(x=X_train_pca[:, 0], y=X_train_pca[:, 1], hue=y_train, palette='viridis', legend='full')
+plt.title('PCA Visualization of Cancer Gene Data')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.legend(title='Class')
+plt.show()
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import cross_val_score, GridSearchCV
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+# Load data
+df = pd.read_csv('data.csv')
+df2 = pd.read_csv('labels_1.csv')
+df3 = pd.merge(df, df2)
+df3 = df3.drop(df3.columns[0], axis=1)
+target_classes = ['BRCA', 'COAD', 'KIRC', 'LUAD', 'PRAD']
+
+# Data preprocessing
+X = df3.drop(columns=['Class'])
+y = df3['Class']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 1. Check for Data Imbalance
+plt.figure(figsize=(8, 6))
+sns.countplot(x='Class', data=df3, order=target_classes)
+plt.title('Class Distribution')
+plt.xlabel('Class')
+plt.ylabel('Count')
+plt.show()
+
+# 2. Perform Cross-Validation
+svm_model = SVC(kernel='linear', C=1.0, random_state=42)
+cv_scores = cross_val_score(svm_model, X_train_scaled, y_train, cv=5)
+print("Cross-Validation Scores:", cv_scores)
+print("Mean CV Accuracy:", np.mean(cv_scores))
+
+# 3. Grid Search for Hyperparameter Tuning
+param_grid = {'C': [0.1, 1, 10, 100], 'kernel': ['linear', 'rbf', 'poly']}
+grid_search = GridSearchCV(svm_model, param_grid, cv=5)
+grid_search.fit(X_train_scaled, y_train)
+print("Best Parameters:", grid_search.best_params_)
+
+# 4. Evaluate Model Performance
+y_pred = grid_search.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Train the SVM model with the best parameters from grid search
+best_svm_model = grid_search.best_estimator_
+
+# 1. Learning Curves
+train_sizes, train_scores, test_scores = learning_curve(best_svm_model, X_train_scaled, y_train, cv=5)
+
+plt.figure(figsize=(10, 6))
+plt.plot(train_sizes, np.mean(train_scores, axis=1), label='Training Score')
+plt.plot(train_sizes, np.mean(test_scores, axis=1), label='Validation Score')
+plt.title('Learning Curves')
+plt.xlabel('Training Size')
+plt.ylabel('Score')
+plt.legend()
+plt.show()
+
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Train the SVM model with the best parameters from grid search
+best_svm_model = grid_search.best_estimator_
+
+# 1. Learning Curves
+train_sizes, train_scores, test_scores = learning_curve(best_svm_model, X_train_scaled, y_train, cv=5)
+
+plt.figure(figsize=(10, 6))
+plt.plot(train_sizes, np.mean(train_scores, axis=1), label='Training Score')
+plt.plot(train_sizes, np.mean(test_scores, axis=1), label='Validation Score')
+plt.title('Learning Curves')
+plt.xlabel('Training Size')
+plt.ylabel('Score')
+plt.legend()
+plt.show()
+
+# 2. ROC Curve and AUC (not applicable for multiclass classification)
+
+# 3. Class-wise Metrics
+y_pred = best_svm_model.predict(X_test_scaled)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=target_classes))
+
+# 4. Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred, labels=target_classes)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=target_classes, yticklabels=target_classes)
+plt.title('Confusion Matrix for SVM Model')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+
+# 5. Feature Selection (e.g., using SelectKBest)
+selector = SelectKBest(score_func=f_classif, k=10)
+X_train_selected = selector.fit_transform(X_train_scaled, y_train)
+
+# Get selected feature indices
+selected_indices = selector.get_support(indices=True)
+
+# Get selected feature names
+selected_features = X.columns[selected_indices]
+print("Selected Features:", selected_features)
+
+# 3. Class-wise Metrics
+y_pred = best_svm_model.predict(X_test_scaled)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=target_classes))
+
+# 4. Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred, labels=target_classes)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=target_classes, yticklabels=target_classes)
+plt.title('Confusion Matrix for SVM Model')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+
+# 5. Feature Selection (e.g., using SelectKBest)
+selector = SelectKBest(score_func=f_classif, k=10)
+X_train_selected = selector.fit_transform(X_train_scaled, y_train)
+
+# Get selected feature indices
+selected_indices = selector.get_support(indices=True)
+
+# Get selected feature names
+selected_features = X.columns[selected_indices]
+print("Selected Features:", selected_features)
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Train the SVM model with the best parameters from grid search
+best_svm_model = grid_search.best_estimator_
+
+# 1. Learning Curves
+train_sizes, train_scores, test_scores = learning_curve(best_svm_model, X_train_scaled, y_train, cv=5)
+
+plt.figure(figsize=(10, 6))
+plt.plot(train_sizes, np.mean(train_scores, axis=1), label='Training Score')
+plt.plot(train_sizes, np.mean(test_scores, axis=1), label='Validation Score')
+plt.title('Learning Curves')
+plt.xlabel('Training Size')
+plt.ylabel('Score')
+plt.legend()
+plt.show()
+
+# 2. ROC Curve and AUC (not applicable for multiclass classification)
+
+# 3. Class-wise Metrics
+y_pred = best_svm_model.predict(X_test_scaled)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=target_classes))
+
+# 4. Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred, labels=target_classes)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=target_classes, yticklabels=target_classes)
+plt.title('Confusion Matrix for SVM Model')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+
+# 5. Feature Selection with constant feature handling
+constant_features = X_train.columns[X_train.var() == 0]
+
+# Remove constant features from the dataset
+X_train_filtered = X_train.drop(columns=constant_features)
+X_test_filtered = X_test.drop(columns=constant_features)
+
+# Apply feature scaling again if necessary
+scaler = StandardScaler()
+X_train_scaled_filtered = scaler.fit_transform(X_train_filtered)
+X_test_scaled_filtered = scaler.transform(X_test_filtered)
+
+# Apply feature selection
+selector = SelectKBest(score_func=f_classif, k=10)
+X_train_selected_filtered = selector.fit_transform(X_train_scaled_filtered, y_train)
+
+# Get selected feature indices
+selected_indices = selector.get_support(indices=True)
+
+# Get selected feature names
+selected_features = X_train_filtered.columns[selected_indices]
+print("Selected Features:", selected_features)
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import DBSCAN
+
+# Load data
+df = pd.read_csv('data.csv')
+df2 = pd.read_csv('labels_1.csv')
+df3 = pd.merge(df, df2)
+df3 = df3.drop(df3.columns[0], axis=1)
+
+# Data preprocessing
+X = df3.drop(columns=['Class'])
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Apply PCA for dimensionality reduction
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+# Apply DBSCAN
+dbscan = DBSCAN(eps=0.0001, min_samples=1)
+clusters = dbscan.fit_predict(X_scaled)
+
+# Visualize clusters using PCA
+plt.figure(figsize=(10, 8))
+sns.scatterplot(x=X_pca[:, 0], y=X_pca[:, 1], hue=clusters, palette='viridis')
+plt.title('DBSCAN Clusters of Cancer Gene Data')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.show()
+
 
 
 
